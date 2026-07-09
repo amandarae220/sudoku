@@ -57,7 +57,7 @@ const SudokuBoard: React.FC = () => {
 
   return (
     <div className="sudoku-container">
-      <div className="flex flex-col items-center">
+      <div>
         <div className="sudoku-grid">
           {board.map((row, rowIndex) =>
             row.map((cell, colIndex) => {
@@ -81,18 +81,15 @@ const SudokuBoard: React.FC = () => {
           <p>Remaining Hints: {remainingHints}</p>
         </div>
 
-        <div className="mt-4 space-x-2">
+        <div className="mt-4">
         <button
             onClick={revealHint}
-            className={`px-4 py-2 bg-green-500 text-white rounded hover:bg-green-700 ${remainingHints <= 0 ? "hint-disabled" : ""}`}
+            className={remainingHints <= 0 ? "hint-disabled" : ""}
             disabled={remainingHints <= 0} // Disable hint button when no hints are left
           >
             Hint
           </button>
-          <button
-            onClick={restartGame}
-            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-700"
-          >
+          <button onClick={restartGame}>
             Restart Game
           </button>
         </div>
