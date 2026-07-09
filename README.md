@@ -1,46 +1,57 @@
-# Getting Started with Create React App
+# Sudoku
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A browser-based Sudoku puzzle game — generate a board, fill it in, and use up to three hints when you get stuck.
 
-## Available Scripts
+Live: https://amandarae220.github.io/sudoku
 
-In the project directory, you can run:
+---
 
-### `npm start`
+## Overview
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+A small React app I built to practice game-state logic in TypeScript. It generates a puzzle, validates input to digits 1–9, locks the pre-filled cells, and offers three hints that reveal a correct value in a random empty cell. "Restart Game" deals a fresh board and resets the hint count.
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+---
 
-### `npm test`
+## Tech Stack
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+| Technology | Why I chose it |
+|------------|---------------|
+| React 19 | Component state (`useState`) maps cleanly to the board/hint model |
+| Vite 7 | Fast dev server and build; replaced Create React App after it was deprecated |
+| TypeScript 5 | Typed board (`number[][]`) catches indexing mistakes in the grid logic |
+| Vitest + Testing Library | Vite-native test runner, no separate Jest/Babel toolchain |
 
-### `npm run build`
+---
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+## Getting Started
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+**Prerequisites:** Node 20.19+ and npm.
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+```bash
+# Clone the repo
+git clone https://github.com/amandarae220/sudoku.git
+cd sudoku
 
-### `npm run eject`
+# Install dependencies
+npm install
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+# Start local dev server
+npm run dev
+```
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+The app runs at `http://localhost:5173/sudoku/` (the base path matches the GitHub Pages URL).
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+Other scripts: `npm test` (Vitest), `npm run build` (type-check + production build to `dist/`), `npm run preview` (serve the built output).
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+---
 
-## Learn More
+## Deployment
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+Hosted on GitHub Pages. Deploys are manual: run `npm run deploy`, which builds to `dist/` and publishes it to the `gh-pages` branch via the `gh-pages` package.
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+---
+
+## Latest Updates
+
+- **2026-07** — Migrated off Create React App to Vite + Vitest; dropped ~1300 transitive dependencies and cleared all npm audit advisories.
+- **2026-07** — Restyled the Hint and Restart buttons.
