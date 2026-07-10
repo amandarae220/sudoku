@@ -1,5 +1,5 @@
-import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { render, screen, fireEvent, act } from "@testing-library/react";
 import type { Board } from "../utils/sudoku";
 import SudokuBoard from "./SudokuBoard";
 
@@ -36,6 +36,8 @@ vi.mock("../utils/sudoku", async (importOriginal) => {
 const topLeftCell = () => screen.getByLabelText("Row 1, column 1");
 
 describe("SudokuBoard", () => {
+  beforeEach(() => localStorage.clear());
+
   it("shows the win banner when the final cell is filled correctly", () => {
     render(<SudokuBoard />);
     expect(screen.queryByText(/you solved it/i)).not.toBeInTheDocument();
@@ -96,5 +98,42 @@ describe("SudokuBoard", () => {
     fireEvent.click(screen.getByText("Check"));
 
     expect(topLeftCell()).toHaveAttribute("aria-invalid", "true");
+  });
+
+  describe("timer and best time", () => {
+    beforeEach(() => vi.useFakeTimers());
+    afterEach(() => vi.useRealTimers());
+
+    it("counts up while playing and freezes on win", () => {
+      render(<SudokuBoard />);
+      expect(screen.getByText("Time: 0:00")).toBeInTheDocument();
+
+      act(() => vi.advanceTimersByTime(3000));
+      expect(screen.getByText("Time: 0:03")).toBeInTheDocument();
+
+      fireEvent.change(topLeftCell(), { target: { value: "5" } }); // solve
+
+      act(() => vi.advanceTimersByTime(5000)); // timer should be frozen now
+      expect(screen.getByText("Time: 0:03")).toBeInTheDocument();
+    });
+
+    it("records the solve time as the best time and persists it", () => {
+      render(<SudokuBoard />);
+      act(() => vi.advanceTimersByTime(3000));
+      fireEvent.change(topLeftCell(), { target: { value: "5" } }); // solve at 0:03
+
+      expect(screen.getByText("Best: 0:03")).toBeInTheDocument();
+      expect(localStorage.getItem("sudoku-best-time")).toBe("3");
+    });
+
+    it("keeps a faster previous best time", () => {
+      localStorage.setItem("sudoku-best-time", "1"); // an existing, faster best
+      render(<SudokuBoard />);
+      act(() => vi.advanceTimersByTime(9000));
+      fireEvent.change(topLeftCell(), { target: { value: "5" } }); // solve at 0:09, slower
+
+      expect(screen.getByText("Best: 0:01")).toBeInTheDocument();
+      expect(localStorage.getItem("sudoku-best-time")).toBe("1");
+    });
   });
 });

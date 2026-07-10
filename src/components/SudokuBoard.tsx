@@ -1,6 +1,25 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { generatePuzzle, getConflicts, Board } from "../utils/sudoku"; // Puzzle generator (unique solution guaranteed)
 import "./SudokuBoard.css"; // Import updated styles
+
+const BEST_TIME_KEY = "sudoku-best-time";
+
+// Read the stored best time (in seconds), or null if there isn't one / storage is unavailable.
+const loadBestTime = (): number | null => {
+  try {
+    const stored = localStorage.getItem(BEST_TIME_KEY);
+    return stored === null ? null : parseInt(stored, 10);
+  } catch {
+    return null;
+  }
+};
+
+// Format a duration in seconds as m:ss.
+const formatTime = (totalSeconds: number): string => {
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+};
 
 const SudokuBoard: React.FC = () => {
   const [game, setGame] = useState<{ puzzle: Board; solution: Board }>(() => generatePuzzle());
@@ -8,6 +27,8 @@ const SudokuBoard: React.FC = () => {
   const [hintedCell, setHintedCell] = useState<[number, number] | null>(null); // Track hinted cell
   const [remainingHints, setRemainingHints] = useState<number>(3); // Track remaining hints
   const [conflicts, setConflicts] = useState<Set<string>>(new Set()); // Cells flagged by the last "Check"
+  const [seconds, setSeconds] = useState<number>(0); // Elapsed time for the current puzzle
+  const [bestTime, setBestTime] = useState<number | null>(() => loadBestTime());
 
   // References to every cell input, so arrow keys can move focus around the grid.
   const cellRefs = useRef<Array<Array<HTMLInputElement | null>>>(
@@ -74,6 +95,27 @@ const SudokuBoard: React.FC = () => {
     [board, solution]
   );
 
+  // Tick the timer once a second while the puzzle is unsolved; freeze on win.
+  useEffect(() => {
+    if (isSolved) return;
+    const id = setInterval(() => setSeconds((s) => s + 1), 1000);
+    return () => clearInterval(id);
+  }, [isSolved]);
+
+  // On win, record a new best time if this solve was faster (or the first).
+  useEffect(() => {
+    if (!isSolved) return;
+    setBestTime((prev) => {
+      if (prev !== null && seconds >= prev) return prev;
+      try {
+        localStorage.setItem(BEST_TIME_KEY, String(seconds));
+      } catch {
+        /* storage unavailable — keep the in-memory best time only */
+      }
+      return seconds;
+    });
+  }, [isSolved, seconds]);
+
   // Start a fresh puzzle and reset all game state.
   const restartGame = () => {
     const next = generatePuzzle();
@@ -82,6 +124,7 @@ const SudokuBoard: React.FC = () => {
     setHintedCell(null);
     setRemainingHints(3);
     setConflicts(new Set());
+    setSeconds(0);
   };
 
   // onChange path (mainly on-screen/mobile keyboards). Physical keyboards are
@@ -167,6 +210,11 @@ const SudokuBoard: React.FC = () => {
               );
             })
           )}
+        </div>
+
+        <div className="stats" role="status" aria-live="off">
+          <span>Time: {formatTime(seconds)}</span>
+          <span>Best: {bestTime === null ? "--" : formatTime(bestTime)}</span>
         </div>
 
         <div className="mb-4">
