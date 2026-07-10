@@ -51,6 +51,22 @@ button {
     padding: 0;
     margin: 0;
   }
+
+  /* Keep the focused cell clearly visible for keyboard navigation */
+  .sudoku-cell:focus {
+    outline: 2px solid #007bff;
+    outline-offset: -2px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Pre-filled clues: visually distinct and not editable */
+  .sudoku-cell.given {
+    background-color: #eceff1;
+    font-weight: bold;
+    color: #222;
+    cursor: default;
+  }
   
   .hinted-cell {
     background-color: #007bff;

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { generatePuzzle, getConflicts, Board } from "../utils/sudoku"; // Puzzle generator (unique solution guaranteed)
 import "./SudokuBoard.css"; // Import updated styles
 
@@ -9,7 +9,64 @@ const SudokuBoard: React.FC = () => {
   const [remainingHints, setRemainingHints] = useState<number>(3); // Track remaining hints
   const [conflicts, setConflicts] = useState<Set<string>>(new Set()); // Cells flagged by the last "Check"
 
+  // References to every cell input, so arrow keys can move focus around the grid.
+  const cellRefs = useRef<Array<Array<HTMLInputElement | null>>>(
+    Array.from({ length: 9 }, () => Array(9).fill(null))
+  );
+
   const { puzzle, solution } = game;
+
+  const isGiven = (row: number, col: number) => puzzle[row][col] !== 0;
+
+  const focusCell = (row: number, col: number) => {
+    if (row >= 0 && row < 9 && col >= 0 && col < 9) {
+      cellRefs.current[row][col]?.focus();
+    }
+  };
+
+  // Set a single cell's value (0 clears it). Ignores givens.
+  const setCell = (row: number, col: number, value: number) => {
+    if (isGiven(row, col)) return;
+    setBoard((prev) => {
+      const next = prev.map((r) => [...r]);
+      next[row][col] = value;
+      return next;
+    });
+    if (conflicts.size > 0) setConflicts(new Set()); // Clear stale flags once the player edits again
+  };
+
+  // Arrow keys navigate; digits fill; Backspace/Delete clears.
+  const handleKeyDown = (e: React.KeyboardEvent, row: number, col: number) => {
+    switch (e.key) {
+      case "ArrowUp":
+        e.preventDefault();
+        focusCell(row - 1, col);
+        break;
+      case "ArrowDown":
+        e.preventDefault();
+        focusCell(row + 1, col);
+        break;
+      case "ArrowLeft":
+        e.preventDefault();
+        focusCell(row, col - 1);
+        break;
+      case "ArrowRight":
+        e.preventDefault();
+        focusCell(row, col + 1);
+        break;
+      case "Backspace":
+      case "Delete":
+      case "0":
+        e.preventDefault();
+        setCell(row, col, 0);
+        break;
+      default:
+        if (/^[1-9]$/.test(e.key)) {
+          e.preventDefault();
+          setCell(row, col, parseInt(e.key, 10)); // overwrite in place, no need to clear first
+        }
+    }
+  };
 
   // The puzzle is solved when every cell is filled and matches the unique solution.
   const isSolved = useMemo(
@@ -27,17 +84,17 @@ const SudokuBoard: React.FC = () => {
     setConflicts(new Set());
   };
 
-  // Handle user input for Sudoku cells
+  // onChange path (mainly on-screen/mobile keyboards). Physical keyboards are
+  // handled in handleKeyDown. Take the last digit typed so an existing value can
+  // be overwritten without clearing it first.
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>, rowIndex: number, colIndex: number) => {
-    const newValue = e.target.value;
-
-    // Allow only numbers 1-9 or an empty value
-    if (/^[1-9]?$/.test(newValue)) {
-      const newBoard = board.map((row) => [...row]);
-      newBoard[rowIndex][colIndex] = newValue === "" ? 0 : parseInt(newValue, 10);
-      setBoard(newBoard);
-      if (conflicts.size > 0) setConflicts(new Set()); // Clear stale flags once the player edits again
+    const raw = e.target.value;
+    if (raw === "") {
+      setCell(rowIndex, colIndex, 0);
+      return;
     }
+    const digit = raw.replace(/[^1-9]/g, "").slice(-1);
+    if (digit) setCell(rowIndex, colIndex, parseInt(digit, 10));
   };
 
   // Reveal a hint by filling in a random empty cell
@@ -86,19 +143,26 @@ const SudokuBoard: React.FC = () => {
           {board.map((row, rowIndex) =>
             row.map((cell, colIndex) => {
               const key = `${rowIndex}-${colIndex}`;
+              const given = isGiven(rowIndex, colIndex);
               const isHinted = hintedCell && hintedCell[0] === rowIndex && hintedCell[1] === colIndex;
               const isConflict = conflicts.has(key);
               return (
                 <input
                   key={key}
+                  ref={(el) => {
+                    cellRefs.current[rowIndex][colIndex] = el;
+                  }}
                   type="text"
                   inputMode="numeric"
                   aria-label={`Row ${rowIndex + 1}, column ${colIndex + 1}`}
                   aria-invalid={isConflict}
-                  className={`sudoku-cell ${isHinted ? "hinted-cell" : ""} ${isConflict ? "conflict" : ""}`}
+                  className={`sudoku-cell ${given ? "given" : ""} ${isHinted ? "hinted-cell" : ""} ${isConflict ? "conflict" : ""}`}
                   value={cell === 0 ? "" : cell}
                   onChange={(e) => handleInputChange(e, rowIndex, colIndex)}
-                  disabled={puzzle[rowIndex][colIndex] !== 0 || isSolved} // Lock givens, and everything once solved
+                  onKeyDown={(e) => handleKeyDown(e, rowIndex, colIndex)}
+                  // Givens (and everything once solved) are read-only, not disabled,
+                  // so they stay keyboard-focusable and visible to screen readers.
+                  readOnly={given || isSolved}
                 />
               );
             })
