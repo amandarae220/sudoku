@@ -4,6 +4,7 @@ import {
   generatePuzzle,
   countSolutions,
   solveBoard,
+  getConflicts,
   Board,
 } from "./sudoku";
 
@@ -70,6 +71,47 @@ describe("generatePuzzle", () => {
     const { puzzle } = generatePuzzle(40);
     const blanks = puzzle.flat().filter((n) => n === 0).length;
     expect(blanks).toBeGreaterThan(0);
+  });
+});
+
+describe("getConflicts", () => {
+  const emptyBoard = (): Board => Array.from({ length: 9 }, () => Array(9).fill(0));
+
+  it("reports no conflicts for a valid solved board", () => {
+    expect(getConflicts(generateSolvedBoard()).size).toBe(0);
+  });
+
+  it("ignores empty cells", () => {
+    expect(getConflicts(emptyBoard()).size).toBe(0);
+  });
+
+  it("flags both cells of a row duplicate", () => {
+    const board = emptyBoard();
+    board[0][0] = 5;
+    board[0][8] = 5;
+    const conflicts = getConflicts(board);
+    expect(conflicts).toEqual(new Set(["0-0", "0-8"]));
+  });
+
+  it("flags a column duplicate", () => {
+    const board = emptyBoard();
+    board[0][3] = 7;
+    board[6][3] = 7;
+    expect(getConflicts(board)).toEqual(new Set(["0-3", "6-3"]));
+  });
+
+  it("flags a 3x3 box duplicate", () => {
+    const board = emptyBoard();
+    board[0][0] = 2;
+    board[2][2] = 2; // same top-left box, different row and column
+    expect(getConflicts(board)).toEqual(new Set(["0-0", "2-2"]));
+  });
+
+  it("does not flag the same value in different rows, columns, and boxes", () => {
+    const board = emptyBoard();
+    board[0][0] = 4;
+    board[4][4] = 4; // different row, column, and box
+    expect(getConflicts(board).size).toBe(0);
   });
 });
 

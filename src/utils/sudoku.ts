@@ -90,6 +90,56 @@ export function countSolutions(board: Board, limit = 2): number {
   return count;
 }
 
+// Cells that break a Sudoku rule: any filled cell whose value is duplicated by
+// another filled cell in the same row, column, or 3x3 box. Returned as a set of
+// "row-col" keys. Empty cells (0) are never conflicts.
+//
+// This is deliberately rule-based (duplicate detection) rather than comparing
+// against the solution — it flags contradictions the player created without
+// revealing whether any given cell matches the answer, so it can't be used to
+// reverse-engineer the solution.
+export function getConflicts(board: Board): Set<string> {
+  const conflicts = new Set<string>();
+
+  const markDuplicates = (cells: [number, number][]) => {
+    const seen = new Map<number, [number, number]>();
+    for (const [row, col] of cells) {
+      const value = board[row][col];
+      if (value === 0) continue;
+      const first = seen.get(value);
+      if (first) {
+        conflicts.add(`${first[0]}-${first[1]}`);
+        conflicts.add(`${row}-${col}`);
+      } else {
+        seen.set(value, [row, col]);
+      }
+    }
+  };
+
+  for (let i = 0; i < 9; i++) {
+    const row: [number, number][] = [];
+    const col: [number, number][] = [];
+    for (let j = 0; j < 9; j++) {
+      row.push([i, j]);
+      col.push([j, i]);
+    }
+    markDuplicates(row);
+    markDuplicates(col);
+  }
+
+  for (let boxRow = 0; boxRow < 9; boxRow += 3) {
+    for (let boxCol = 0; boxCol < 9; boxCol += 3) {
+      const box: [number, number][] = [];
+      for (let r = 0; r < 3; r++) {
+        for (let c = 0; c < 3; c++) box.push([boxRow + r, boxCol + c]);
+      }
+      markDuplicates(box);
+    }
+  }
+
+  return conflicts;
+}
+
 // A random, fully solved board.
 export function generateSolvedBoard(): Board {
   const empty: Board = Array.from({ length: 9 }, () => Array(9).fill(0));

@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { generatePuzzle, Board } from "../utils/sudoku"; // Puzzle generator (unique solution guaranteed)
+import React, { useMemo, useState } from "react";
+import { generatePuzzle, getConflicts, Board } from "../utils/sudoku"; // Puzzle generator (unique solution guaranteed)
 import "./SudokuBoard.css"; // Import updated styles
 
 const SudokuBoard: React.FC = () => {
@@ -7,16 +7,24 @@ const SudokuBoard: React.FC = () => {
   const [board, setBoard] = useState<Board>(() => game.puzzle.map((row) => [...row]));
   const [hintedCell, setHintedCell] = useState<[number, number] | null>(null); // Track hinted cell
   const [remainingHints, setRemainingHints] = useState<number>(3); // Track remaining hints
+  const [conflicts, setConflicts] = useState<Set<string>>(new Set()); // Cells flagged by the last "Check"
 
   const { puzzle, solution } = game;
 
-  // Restart the game with a new puzzle and reset hint count
+  // The puzzle is solved when every cell is filled and matches the unique solution.
+  const isSolved = useMemo(
+    () => board.every((row, r) => row.every((value, c) => value !== 0 && value === solution[r][c])),
+    [board, solution]
+  );
+
+  // Start a fresh puzzle and reset all game state.
   const restartGame = () => {
     const next = generatePuzzle();
     setGame(next);
     setBoard(next.puzzle.map((row) => [...row]));
-    setHintedCell(null); // Reset hint highlight
-    setRemainingHints(3); // Reset hint count
+    setHintedCell(null);
+    setRemainingHints(3);
+    setConflicts(new Set());
   };
 
   // Handle user input for Sudoku cells
@@ -25,9 +33,10 @@ const SudokuBoard: React.FC = () => {
 
     // Allow only numbers 1-9 or an empty value
     if (/^[1-9]?$/.test(newValue)) {
-      const newBoard = board.map((row, r) => [...row]);
+      const newBoard = board.map((row) => [...row]);
       newBoard[rowIndex][colIndex] = newValue === "" ? 0 : parseInt(newValue, 10);
       setBoard(newBoard);
+      if (conflicts.size > 0) setConflicts(new Set()); // Clear stale flags once the player edits again
     }
   };
 
@@ -55,21 +64,41 @@ const SudokuBoard: React.FC = () => {
     setTimeout(() => setHintedCell(null), 3000);
   };
 
+  // On-demand self-check: briefly flag any rule conflicts, then let them fade.
+  const checkBoard = () => {
+    const found = getConflicts(board);
+    setConflicts(found);
+    if (found.size > 0) {
+      setTimeout(() => setConflicts(new Set()), 2500);
+    }
+  };
+
   return (
     <div className="sudoku-container">
       <div>
-        <div className="sudoku-grid">
+        {isSolved && (
+          <p className="win-banner" role="status" aria-live="polite">
+            ✓ You solved it!
+          </p>
+        )}
+
+        <div className={`sudoku-grid ${isSolved ? "solved" : ""}`}>
           {board.map((row, rowIndex) =>
             row.map((cell, colIndex) => {
+              const key = `${rowIndex}-${colIndex}`;
               const isHinted = hintedCell && hintedCell[0] === rowIndex && hintedCell[1] === colIndex;
+              const isConflict = conflicts.has(key);
               return (
                 <input
-                  key={`${rowIndex}-${colIndex}`}
+                  key={key}
                   type="text"
-                  className={`sudoku-cell ${isHinted ? "hinted-cell" : ""}`}
+                  inputMode="numeric"
+                  aria-label={`Row ${rowIndex + 1}, column ${colIndex + 1}`}
+                  aria-invalid={isConflict}
+                  className={`sudoku-cell ${isHinted ? "hinted-cell" : ""} ${isConflict ? "conflict" : ""}`}
                   value={cell === 0 ? "" : cell}
                   onChange={(e) => handleInputChange(e, rowIndex, colIndex)}
-                  disabled={puzzle[rowIndex][colIndex] !== 0} // Disable pre-filled cells
+                  disabled={puzzle[rowIndex][colIndex] !== 0 || isSolved} // Lock givens, and everything once solved
                 />
               );
             })
@@ -82,16 +111,21 @@ const SudokuBoard: React.FC = () => {
         </div>
 
         <div className="mt-4">
-        <button
-            onClick={revealHint}
-            className={remainingHints <= 0 ? "hint-disabled" : ""}
-            disabled={remainingHints <= 0} // Disable hint button when no hints are left
-          >
-            Hint
-          </button>
-          <button onClick={restartGame}>
-            Restart Game
-          </button>
+          {isSolved ? (
+            <button onClick={restartGame}>New Game</button>
+          ) : (
+            <>
+              <button
+                onClick={revealHint}
+                className={remainingHints <= 0 ? "hint-disabled" : ""}
+                disabled={remainingHints <= 0} // Disable hint button when no hints are left
+              >
+                Hint
+              </button>
+              <button onClick={checkBoard}>Check</button>
+              <button onClick={restartGame}>Restart Game</button>
+            </>
+          )}
         </div>
       </div>
     </div>

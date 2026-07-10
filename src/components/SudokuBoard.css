@@ -57,6 +57,28 @@ button {
     font-weight: bold;
     transition: background-color 0.5s ease-in-out;
   }
+
+  /* Rule conflicts flagged by the Check button (fade out as the flag clears) */
+  .conflict {
+    background-color: #f8d7da;
+    color: #b3261e;
+    font-weight: bold;
+    transition: background-color 0.5s ease-in-out, color 0.5s ease-in-out;
+  }
+
+  /* Solved state: soft green tint across the grid */
+  .sudoku-grid.solved .sudoku-cell {
+    background-color: #e6f4ea;
+    transition: background-color 0.5s ease-in-out;
+  }
+
+  .win-banner {
+    text-align: center;
+    color: #1e7e34;
+    font-size: 20px;
+    font-weight: bold;
+    margin: 0 0 1rem;
+  }
   
   .sudoku-cell:nth-child(3n) {
     border-right: 3px solid black;
