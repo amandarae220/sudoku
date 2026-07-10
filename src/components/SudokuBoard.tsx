@@ -1,20 +1,20 @@
 import React, { useState } from "react";
-import { generateSudoku } from "../utils/sudoku"; // Utility to generate a Sudoku board
+import { generatePuzzle, Board } from "../utils/sudoku"; // Puzzle generator (unique solution guaranteed)
 import "./SudokuBoard.css"; // Import updated styles
 
 const SudokuBoard: React.FC = () => {
-  const [initialBoard, setInitialBoard] = useState<number[][]>(generateSudoku());
-  const [board, setBoard] = useState<number[][]>(JSON.parse(JSON.stringify(initialBoard)));
-  const [solution, setSolution] = useState<number[][]>(generateSudoku(0)); // Store full solution
+  const [game, setGame] = useState<{ puzzle: Board; solution: Board }>(() => generatePuzzle());
+  const [board, setBoard] = useState<Board>(() => game.puzzle.map((row) => [...row]));
   const [hintedCell, setHintedCell] = useState<[number, number] | null>(null); // Track hinted cell
   const [remainingHints, setRemainingHints] = useState<number>(3); // Track remaining hints
 
-  // Restart the game with a new board and reset hint count
+  const { puzzle, solution } = game;
+
+  // Restart the game with a new puzzle and reset hint count
   const restartGame = () => {
-    const newBoard = generateSudoku();
-    setInitialBoard(newBoard);
-    setBoard(JSON.parse(JSON.stringify(newBoard))); 
-    setSolution(generateSudoku(0));
+    const next = generatePuzzle();
+    setGame(next);
+    setBoard(next.puzzle.map((row) => [...row]));
     setHintedCell(null); // Reset hint highlight
     setRemainingHints(3); // Reset hint count
   };
@@ -69,7 +69,7 @@ const SudokuBoard: React.FC = () => {
                   className={`sudoku-cell ${isHinted ? "hinted-cell" : ""}`}
                   value={cell === 0 ? "" : cell}
                   onChange={(e) => handleInputChange(e, rowIndex, colIndex)}
-                  disabled={initialBoard[rowIndex][colIndex] !== 0} // Disable pre-filled cells
+                  disabled={puzzle[rowIndex][colIndex] !== 0} // Disable pre-filled cells
                 />
               );
             })
