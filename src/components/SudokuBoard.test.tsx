@@ -130,6 +130,38 @@ describe("SudokuBoard", () => {
     expect(other.className).not.toContain("peer");
   });
 
+  it("exposes the grid with a single roving tab stop", () => {
+    render(<SudokuBoard />);
+    expect(screen.getByRole("grid", { name: /sudoku board/i })).toBeInTheDocument();
+
+    const tabbable = () =>
+      screen.getAllByRole("textbox").filter((el) => el.getAttribute("tabindex") === "0");
+
+    // Exactly one cell is tabbable, defaulting to the top-left.
+    expect(tabbable()).toHaveLength(1);
+    expect(tabbable()[0]).toBe(screen.getByLabelText("Row 1, column 1"));
+
+    // Focusing another cell moves the single tab stop to it.
+    act(() => screen.getByLabelText("Row 5, column 5").focus());
+    expect(tabbable()).toHaveLength(1);
+    expect(tabbable()[0]).toBe(screen.getByLabelText("Row 5, column 5"));
+  });
+
+  it("changing difficulty starts a new game and resets the timer", () => {
+    render(<SudokuBoard />);
+    const select = screen.getByLabelText("Difficulty");
+    expect(select).toHaveValue("medium");
+
+    act(() => vi.advanceTimersByTime(4000));
+    expect(statValue("Time", "0:04")).toBeInTheDocument();
+
+    fireEvent.change(select, { target: { value: "hard" } });
+
+    expect(select).toHaveValue("hard");
+    expect(statValue("Time", "0:00")).toBeInTheDocument(); // fresh puzzle
+    expect(localStorage.getItem("sudoku-difficulty")).toBe("hard");
+  });
+
   describe("timer and best time", () => {
     it("counts up while playing and freezes on win", () => {
       render(<SudokuBoard />);
