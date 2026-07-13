@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, fireEvent, act } from "@testing-library/react";
+import { render, screen, fireEvent, act, within } from "@testing-library/react";
 import type { Board } from "../utils/sudoku";
 import SudokuBoard from "./SudokuBoard";
 
@@ -34,9 +34,16 @@ vi.mock("../utils/sudoku", async (importOriginal) => {
 });
 
 const topLeftCell = () => screen.getByLabelText("Row 1, column 1");
+const checkButton = () => screen.getByRole("button", { name: /check puzzle/i });
+const statValue = (name: string, value: string) =>
+  within(screen.getByRole("group", { name })).getByText(value);
 
 describe("SudokuBoard", () => {
-  beforeEach(() => localStorage.clear());
+  beforeEach(() => {
+    localStorage.clear();
+    vi.useFakeTimers(); // keep the game timer from ticking outside act() during tests
+  });
+  afterEach(() => vi.useRealTimers());
 
   it("shows the win banner when the final cell is filled correctly", () => {
     render(<SudokuBoard />);
@@ -58,7 +65,7 @@ describe("SudokuBoard", () => {
   it("moves focus with arrow keys", () => {
     render(<SudokuBoard />);
     const start = topLeftCell();
-    start.focus();
+    act(() => start.focus());
     expect(start).toHaveFocus();
 
     fireEvent.keyDown(start, { key: "ArrowRight" });
@@ -82,7 +89,7 @@ describe("SudokuBoard", () => {
   it("does not let arrow navigation fall off the grid edge", () => {
     render(<SudokuBoard />);
     const start = topLeftCell();
-    start.focus();
+    act(() => start.focus());
     fireEvent.keyDown(start, { key: "ArrowUp" }); // already at the top row
     expect(start).toHaveFocus();
   });
@@ -95,26 +102,46 @@ describe("SudokuBoard", () => {
     // Nothing is flagged until the player asks.
     expect(topLeftCell()).toHaveAttribute("aria-invalid", "false");
 
-    fireEvent.click(screen.getByText("Check"));
+    fireEvent.click(checkButton());
 
     expect(topLeftCell()).toHaveAttribute("aria-invalid", "true");
   });
 
-  describe("timer and best time", () => {
-    beforeEach(() => vi.useFakeTimers());
-    afterEach(() => vi.useRealTimers());
+  it("highlights the focused cell's row, column, and box as peers", () => {
+    render(<SudokuBoard />);
+    const focus = screen.getByLabelText("Row 5, column 5");
+    fireEvent.focus(focus);
 
+    // Same row, same column, and same 3x3 box all count as peers.
+    expect(screen.getByLabelText("Row 5, column 1").className).toContain("peer");
+    expect(screen.getByLabelText("Row 1, column 5").className).toContain("peer");
+    expect(screen.getByLabelText("Row 4, column 4").className).toContain("peer");
+    // An unrelated cell is not a peer.
+    expect(screen.getByLabelText("Row 1, column 1").className).not.toContain("peer");
+  });
+
+  it("highlights cells sharing the focused cell's value", () => {
+    render(<SudokuBoard />);
+    // Focus a given "5" (row 3, col 7). Another "5" that is NOT a peer (row 5, col 5)
+    // should be flagged purely because it shares the value.
+    fireEvent.focus(screen.getByLabelText("Row 3, column 7"));
+    const other = screen.getByLabelText("Row 5, column 5");
+    expect(other.className).toContain("same-number");
+    expect(other.className).not.toContain("peer");
+  });
+
+  describe("timer and best time", () => {
     it("counts up while playing and freezes on win", () => {
       render(<SudokuBoard />);
-      expect(screen.getByText("Time: 0:00")).toBeInTheDocument();
+      expect(statValue("Time", "0:00")).toBeInTheDocument();
 
       act(() => vi.advanceTimersByTime(3000));
-      expect(screen.getByText("Time: 0:03")).toBeInTheDocument();
+      expect(statValue("Time", "0:03")).toBeInTheDocument();
 
       fireEvent.change(topLeftCell(), { target: { value: "5" } }); // solve
 
       act(() => vi.advanceTimersByTime(5000)); // timer should be frozen now
-      expect(screen.getByText("Time: 0:03")).toBeInTheDocument();
+      expect(statValue("Time", "0:03")).toBeInTheDocument();
     });
 
     it("records the solve time as the best time and persists it", () => {
@@ -122,7 +149,7 @@ describe("SudokuBoard", () => {
       act(() => vi.advanceTimersByTime(3000));
       fireEvent.change(topLeftCell(), { target: { value: "5" } }); // solve at 0:03
 
-      expect(screen.getByText("Best: 0:03")).toBeInTheDocument();
+      expect(statValue("Best Time", "0:03")).toBeInTheDocument();
       expect(localStorage.getItem("sudoku-best-time")).toBe("3");
     });
 
@@ -132,7 +159,7 @@ describe("SudokuBoard", () => {
       act(() => vi.advanceTimersByTime(9000));
       fireEvent.change(topLeftCell(), { target: { value: "5" } }); // solve at 0:09, slower
 
-      expect(screen.getByText("Best: 0:01")).toBeInTheDocument();
+      expect(statValue("Best Time", "0:01")).toBeInTheDocument();
       expect(localStorage.getItem("sudoku-best-time")).toBe("1");
     });
   });

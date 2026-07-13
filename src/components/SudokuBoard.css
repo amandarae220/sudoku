@@ -1,132 +1,234 @@
-h1 {
-    text-align: center;
+.board-card {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+  max-width: 620px;
+  padding: 28px;
+  background-color: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
 }
 
-div.mb-4 {
-    margin-top: 2rem
+/* ---- HUD ---- */
+.hud {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
 }
 
-div.mt-4 p,
-div.mb-4 p {
-    text-align: center;
-    margin-bottom: 3rem;
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1 1 120px;
+  padding: 12px 16px;
+  background-color: var(--color-surface-sunken);
+  border-radius: var(--radius-md);
 }
 
-button {
-    background-color: #007bff;
-    color: white;
-    border-radius: 4px;
-    border: unset;
-    padding: 1% 1%;
-    font-size: 1vw;
-    font-size: 1em;
-    display: block;
-    margin: auto;
-    margin-bottom: 1rem;
-  }
+.stat__label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--color-muted);
+}
 
- /* Remaining Hints Styling */
-.sudoku-container p {
-    font-size: 18px;
-    font-weight: bold;
-    color: #333;
+.stat__value {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--color-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.stat__progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ring {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  /* the inner cut-out that turns the disc into a ring */
+  -webkit-mask: radial-gradient(circle 7px at center, transparent 98%, #000 100%);
+  mask: radial-gradient(circle 7px at center, transparent 98%, #000 100%);
+}
+
+/* ---- Grid ---- */
+.sudoku-grid {
+  display: grid;
+  grid-template-columns: repeat(9, 1fr);
+  width: fit-content;
+  margin: 0 auto;
+  border: 2px solid var(--color-box-line);
+  border-radius: 10px;
+  overflow: hidden;
+  background-color: var(--color-box-line);
+  gap: 1px;
+}
+
+.sudoku-cell {
+  width: 52px;
+  height: 52px;
+  text-align: center;
+  font-size: 22px;
+  font-weight: 600;
+  border: none;
+  background-color: var(--color-cell);
+  color: var(--color-entry); /* player entries */
+  font-variant-numeric: tabular-nums;
+  padding: 0;
+  margin: 0;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.sudoku-cell:focus {
+  outline: none;
+}
+
+/* Thicker rules between the 3x3 boxes */
+.sudoku-cell:nth-child(3n):not(:nth-child(9n)) {
+  box-shadow: 2px 0 0 0 var(--color-box-line);
+  position: relative;
+  z-index: 1;
+}
+.sudoku-grid > .sudoku-cell:nth-child(n + 19):nth-child(-n + 27),
+.sudoku-grid > .sudoku-cell:nth-child(n + 46):nth-child(-n + 54) {
+  box-shadow: 0 2px 0 0 var(--color-box-line);
+  position: relative;
+  z-index: 1;
+}
+
+/* Given clues: distinct from player entries */
+.sudoku-cell.given {
+  background-color: var(--color-given-bg);
+  color: var(--color-ink);
+  font-weight: 700;
+  cursor: default;
+}
+
+/* ---- Highlighting story ---- */
+.sudoku-cell.peer {
+  background-color: var(--color-peer);
+}
+.sudoku-cell.given.peer {
+  background-color: color-mix(in srgb, var(--color-peer) 70%, var(--color-given-bg));
+}
+.sudoku-cell.same-number {
+  background-color: var(--color-same-number);
+}
+.sudoku-cell.selected {
+  outline: 2px solid var(--color-selected-ring);
+  outline-offset: -2px;
+  border-radius: 6px;
+  position: relative;
+  z-index: 2;
+}
+
+.sudoku-cell.hinted-cell {
+  background-color: var(--color-accent);
+  color: var(--color-on-accent);
+  font-weight: 700;
+}
+
+.sudoku-cell.conflict {
+  background-color: var(--color-conflict-bg);
+  color: var(--color-conflict-text);
+  font-weight: 700;
+}
+
+/* Solved state: soft success tint */
+.sudoku-grid.solved .sudoku-cell {
+  background-color: color-mix(in srgb, var(--color-success) 14%, var(--color-cell));
+}
+
+.win-banner {
+  text-align: center;
+  color: var(--color-success);
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0;
+}
+
+/* ---- Actions ---- */
+.actions {
+  display: flex;
+  gap: 12px;
+  align-items: stretch;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 20px;
+  border: none;
+  border-radius: var(--radius-md);
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+.btn--primary {
+  flex: 2 1 auto;
+  color: var(--color-on-accent);
+  background: linear-gradient(135deg, var(--color-accent), var(--color-accent-strong));
+  box-shadow: var(--shadow-soft);
+}
+.btn--primary:hover {
+  filter: brightness(1.05);
+}
+
+.btn--ghost {
+  flex: 1 1 auto;
+  color: var(--color-ink);
+  background-color: var(--color-surface-sunken);
+}
+.btn--ghost:hover {
+  background-color: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface-sunken));
+}
+.btn--ghost:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background-color: var(--color-surface);
+  color: var(--color-accent);
+  font-size: 13px;
+}
+
+@media (max-width: 560px) {
+  .board-card {
+    padding: 16px;
   }
-  
-  /* Sudoku grid and cell styles (same as before) */
-  .sudoku-grid {
-    display: grid;
-    grid-template-columns: repeat(9, 1fr);
-    border: 4px solid black;
-    width: fit-content;
-    margin: auto;
-  }
-  
   .sudoku-cell {
-    width: 48px;
-    height: 48px;
-    text-align: center;
-    font-size: 20px;
-    border: 1px solid gray;
-    box-sizing: border-box;
-    padding: 0;
-    margin: 0;
+    width: 36px;
+    height: 36px;
+    font-size: 18px;
   }
-
-  /* Keep the focused cell clearly visible for keyboard navigation */
-  .sudoku-cell:focus {
-    outline: 2px solid #007bff;
-    outline-offset: -2px;
-    position: relative;
-    z-index: 1;
+  .actions {
+    flex-wrap: wrap;
   }
-
-  /* Pre-filled clues: visually distinct and not editable */
-  .sudoku-cell.given {
-    background-color: #eceff1;
-    font-weight: bold;
-    color: #222;
-    cursor: default;
-  }
-  
-  .hinted-cell {
-    background-color: #007bff;
-    font-weight: bold;
-    transition: background-color 0.5s ease-in-out;
-  }
-
-  /* Rule conflicts flagged by the Check button (fade out as the flag clears) */
-  .conflict {
-    background-color: #f8d7da;
-    color: #b3261e;
-    font-weight: bold;
-    transition: background-color 0.5s ease-in-out, color 0.5s ease-in-out;
-  }
-
-  /* Solved state: soft green tint across the grid */
-  .sudoku-grid.solved .sudoku-cell {
-    background-color: #e6f4ea;
-    transition: background-color 0.5s ease-in-out;
-  }
-
-  .stats {
-    display: flex;
-    justify-content: center;
-    gap: 2rem;
-    margin-top: 1rem;
-    font-size: 16px;
-    font-weight: bold;
-    color: #333;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .win-banner {
-    text-align: center;
-    color: #1e7e34;
-    font-size: 20px;
-    font-weight: bold;
-    margin: 0 0 1rem;
-  }
-  
-  .sudoku-cell:nth-child(3n) {
-    border-right: 3px solid black;
-  }
-  
-  .sudoku-cell:nth-child(9n) {
-    border-right: none;
-  }
-  
-  .sudoku-cell:nth-child(n + 19):nth-child(-n + 27),
-  .sudoku-cell:nth-child(n + 46):nth-child(-n + 54) {
-    border-bottom: 3px solid black;
-  }
-  
-  /* Disabled Hint Button Styles */
-  .hint-disabled {
-    background-color: #d3d3d3; /* Light grey */
-    cursor: not-allowed;
-  }
-  
-  .hint-disabled:hover {
-    background-color: #d3d3d3; /* Keep the same color when hovering */
-  }
-  
+}
