@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, act, within } from "@testing-library/react";
 import type { Board } from "../utils/sudoku";
+import { applyWin, defaultStats, Difficulty, GameStats } from "../game/stats";
 import SudokuBoard from "./SudokuBoard";
 
 // A valid, complete Sudoku solution used as a fixture.
@@ -38,6 +39,15 @@ const checkButton = () => screen.getByRole("button", { name: /check puzzle/i });
 const statValue = (name: string, value: string) =>
   within(screen.getByRole("group", { name })).getByText(value);
 
+const renderBoard = (
+  overrides: { stats?: GameStats; onRecordWin?: (difficulty: Difficulty, seconds: number) => void } = {}
+) => {
+  const onRecordWin = overrides.onRecordWin ?? vi.fn();
+  const stats = overrides.stats ?? defaultStats();
+  const utils = render(<SudokuBoard stats={stats} onRecordWin={onRecordWin} />);
+  return { ...utils, onRecordWin };
+};
+
 describe("SudokuBoard", () => {
   beforeEach(() => {
     localStorage.clear();
@@ -46,7 +56,7 @@ describe("SudokuBoard", () => {
   afterEach(() => vi.useRealTimers());
 
   it("shows the win banner when the final cell is filled correctly", () => {
-    render(<SudokuBoard />);
+    renderBoard();
     expect(screen.queryByText(/you solved it/i)).not.toBeInTheDocument();
 
     fireEvent.change(topLeftCell(), { target: { value: "5" } }); // the correct value
@@ -57,13 +67,13 @@ describe("SudokuBoard", () => {
   });
 
   it("does not win when the final cell is filled incorrectly", () => {
-    render(<SudokuBoard />);
+    renderBoard();
     fireEvent.change(topLeftCell(), { target: { value: "9" } }); // wrong, but no row/col/box duplicate
     expect(screen.queryByText(/you solved it/i)).not.toBeInTheDocument();
   });
 
   it("moves focus with arrow keys", () => {
-    render(<SudokuBoard />);
+    renderBoard();
     const start = topLeftCell();
     act(() => start.focus());
     expect(start).toHaveFocus();
@@ -76,7 +86,7 @@ describe("SudokuBoard", () => {
   });
 
   it("fills a cell by typing a digit and clears it with Backspace", () => {
-    render(<SudokuBoard />);
+    renderBoard();
     const cell = topLeftCell(); // the one empty cell in the fixture
 
     fireEvent.keyDown(cell, { key: "7" });
@@ -87,7 +97,7 @@ describe("SudokuBoard", () => {
   });
 
   it("does not let arrow navigation fall off the grid edge", () => {
-    render(<SudokuBoard />);
+    renderBoard();
     const start = topLeftCell();
     act(() => start.focus());
     fireEvent.keyDown(start, { key: "ArrowUp" }); // already at the top row
@@ -95,7 +105,7 @@ describe("SudokuBoard", () => {
   });
 
   it("flags rule conflicts only after Check is pressed", () => {
-    render(<SudokuBoard />);
+    renderBoard();
     // Enter a 3, which duplicates the given 3 already in row 1.
     fireEvent.change(topLeftCell(), { target: { value: "3" } });
 
@@ -108,7 +118,7 @@ describe("SudokuBoard", () => {
   });
 
   it("highlights the focused cell's row, column, and box as peers", () => {
-    render(<SudokuBoard />);
+    renderBoard();
     const focus = screen.getByLabelText("Row 5, column 5");
     fireEvent.focus(focus);
 
@@ -121,7 +131,7 @@ describe("SudokuBoard", () => {
   });
 
   it("highlights cells sharing the focused cell's value", () => {
-    render(<SudokuBoard />);
+    renderBoard();
     // Focus a given "5" (row 3, col 7). Another "5" that is NOT a peer (row 5, col 5)
     // should be flagged purely because it shares the value.
     fireEvent.focus(screen.getByLabelText("Row 3, column 7"));
@@ -131,7 +141,7 @@ describe("SudokuBoard", () => {
   });
 
   it("exposes the grid with a single roving tab stop", () => {
-    render(<SudokuBoard />);
+    renderBoard();
     expect(screen.getByRole("grid", { name: /sudoku board/i })).toBeInTheDocument();
 
     const tabbable = () =>
@@ -148,7 +158,7 @@ describe("SudokuBoard", () => {
   });
 
   it("changing difficulty starts a new game and resets the timer", () => {
-    render(<SudokuBoard />);
+    renderBoard();
     const select = screen.getByLabelText("Difficulty");
     expect(select).toHaveValue("medium");
 
@@ -164,7 +174,7 @@ describe("SudokuBoard", () => {
 
   describe("timer and best time", () => {
     it("counts up while playing and freezes on win", () => {
-      render(<SudokuBoard />);
+      renderBoard();
       expect(statValue("Time", "0:00")).toBeInTheDocument();
 
       act(() => vi.advanceTimersByTime(3000));
@@ -176,23 +186,20 @@ describe("SudokuBoard", () => {
       expect(statValue("Time", "0:03")).toBeInTheDocument();
     });
 
-    it("records the solve time as the best time and persists it", () => {
-      render(<SudokuBoard />);
+    it("reports the win exactly once with the elapsed solve time", () => {
+      const onRecordWin = vi.fn();
+      renderBoard({ onRecordWin });
       act(() => vi.advanceTimersByTime(3000));
       fireEvent.change(topLeftCell(), { target: { value: "5" } }); // solve at 0:03
 
-      expect(statValue("Best Time", "0:03")).toBeInTheDocument();
-      expect(localStorage.getItem("sudoku-best-time")).toBe("3");
+      expect(onRecordWin).toHaveBeenCalledTimes(1);
+      expect(onRecordWin).toHaveBeenCalledWith("medium", 3);
     });
 
-    it("keeps a faster previous best time", () => {
-      localStorage.setItem("sudoku-best-time", "1"); // an existing, faster best
-      render(<SudokuBoard />);
-      act(() => vi.advanceTimersByTime(9000));
-      fireEvent.change(topLeftCell(), { target: { value: "5" } }); // solve at 0:09, slower
-
-      expect(statValue("Best Time", "0:01")).toBeInTheDocument();
-      expect(localStorage.getItem("sudoku-best-time")).toBe("1");
+    it("shows the best time for the current difficulty from stats", () => {
+      const stats = applyWin(defaultStats(), "medium", 125); // 2:05
+      renderBoard({ stats });
+      expect(statValue("Best Time", "2:05")).toBeInTheDocument();
     });
   });
 });

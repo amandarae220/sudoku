@@ -1,11 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { generatePuzzle, getConflicts, Board } from "../utils/sudoku"; // Puzzle generator (unique solution guaranteed)
+import { Difficulty, GameStats } from "../game/stats";
+import { formatTime } from "../game/format";
 import "./SudokuBoard.css"; // Import updated styles
 
-const BEST_TIME_KEY = "sudoku-best-time";
 const DIFFICULTY_KEY = "sudoku-difficulty";
-
-type Difficulty = "easy" | "medium" | "hard";
 
 // How many cells the generator tries to blank out per difficulty.
 const BLANKS: Record<Difficulty, number> = { easy: 38, medium: 46, hard: 52 };
@@ -20,24 +19,12 @@ const loadDifficulty = (): Difficulty => {
   return "medium";
 };
 
-// Read the stored best time (in seconds), or null if there isn't one / storage is unavailable.
-const loadBestTime = (): number | null => {
-  try {
-    const stored = localStorage.getItem(BEST_TIME_KEY);
-    return stored === null ? null : parseInt(stored, 10);
-  } catch {
-    return null;
-  }
-};
+interface SudokuBoardProps {
+  stats: GameStats;
+  onRecordWin: (difficulty: Difficulty, seconds: number) => void;
+}
 
-// Format a duration in seconds as m:ss.
-const formatTime = (totalSeconds: number): string => {
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return `${minutes}:${String(seconds).padStart(2, "0")}`;
-};
-
-const SudokuBoard: React.FC = () => {
+const SudokuBoard: React.FC<SudokuBoardProps> = ({ stats, onRecordWin }) => {
   const [difficulty, setDifficulty] = useState<Difficulty>(() => loadDifficulty());
   const [game, setGame] = useState<{ puzzle: Board; solution: Board }>(() =>
     generatePuzzle(BLANKS[loadDifficulty()])
@@ -47,8 +34,13 @@ const SudokuBoard: React.FC = () => {
   const [remainingHints, setRemainingHints] = useState<number>(3); // Track remaining hints
   const [conflicts, setConflicts] = useState<Set<string>>(new Set()); // Cells flagged by the last "Check"
   const [seconds, setSeconds] = useState<number>(0); // Elapsed time for the current puzzle
-  const [bestTime, setBestTime] = useState<number | null>(() => loadBestTime());
   const [focusedCell, setFocusedCell] = useState<[number, number] | null>(null); // Drives peer / same-number highlighting
+
+  // Best time for the active difficulty, straight from the persisted stats.
+  const bestTime = stats.byDifficulty[difficulty].bestTime;
+
+  // Guard so a win is recorded exactly once per puzzle (reset on each new game).
+  const winRecorded = useRef(false);
 
   // References to every cell input, so arrow keys can move focus around the grid.
   const cellRefs = useRef<Array<Array<HTMLInputElement | null>>>(
@@ -140,19 +132,13 @@ const SudokuBoard: React.FC = () => {
     return () => clearInterval(id);
   }, [isSolved]);
 
-  // On win, record a new best time if this solve was faster (or the first).
+  // On win, record the solve exactly once (updates wins, best time, and streak).
   useEffect(() => {
-    if (!isSolved) return;
-    setBestTime((prev) => {
-      if (prev !== null && seconds >= prev) return prev;
-      try {
-        localStorage.setItem(BEST_TIME_KEY, String(seconds));
-      } catch {
-        /* storage unavailable — keep the in-memory best time only */
-      }
-      return seconds;
-    });
-  }, [isSolved, seconds]);
+    if (isSolved && !winRecorded.current) {
+      winRecorded.current = true;
+      onRecordWin(difficulty, seconds);
+    }
+  }, [isSolved, seconds, difficulty, onRecordWin]);
 
   // Start a fresh puzzle at the given difficulty and reset all game state.
   const newGame = (level: Difficulty) => {
@@ -164,6 +150,7 @@ const SudokuBoard: React.FC = () => {
     setConflicts(new Set());
     setSeconds(0);
     setFocusedCell(null);
+    winRecorded.current = false;
   };
 
   const restartGame = () => newGame(difficulty);
