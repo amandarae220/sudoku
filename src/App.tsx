@@ -14,6 +14,13 @@ const App: React.FC = () => {
   return (
     <div className="app-shell">
       <aside className="sidebar">
+        <a
+          className="backToPortfolio"
+          href="/project/sudoku"
+          aria-label="Back to portfolio project page"
+        >
+          ← Back to portfolio
+        </a>
         <div className="brand">
           <span className="brand__mark" aria-hidden="true">
             <span />
