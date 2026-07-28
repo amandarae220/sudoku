@@ -1,13 +1,113 @@
+/* ------------------------------------------------------------------ *
+ * Design tokens
+ *
+ * Light theme lives in :root. Dark theme is applied either explicitly
+ * (html[data-theme="dark"]) or via the OS preference when the user has
+ * not overridden it (html:not([data-theme]) + prefers-color-scheme).
+ * ------------------------------------------------------------------ */
+:root {
+  /* Warm "cozy" light palette */
+  --color-bg: #faf4ee;
+  --color-surface: #fffdfb;
+  --color-surface-sunken: #f7efe9;
+  --color-ink: #2b2320; /* givens + primary text */
+  --color-entry: #a8324a; /* player-entered numbers */
+  --color-muted: #6f615a; /* labels / secondary text */
+  --color-accent: #c24c63;
+  --color-accent-strong: #8e2c43;
+  --color-on-accent: #ffffff;
+
+  --color-cell: #fffdfb;
+  --color-grid-line: #e6dad3;
+  --color-box-line: #c3b0a6;
+  --color-peer: #f7e6ea; /* row/column/box of the selected cell */
+  --color-same-number: #efd0d8; /* cells sharing the selected value */
+  --color-selected-ring: #c24c63;
+  --color-given-bg: #f4ece7;
+  --color-conflict-bg: #f8d7da;
+  --color-conflict-text: #b3261e;
+  --color-success: #4e7a5b;
+
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 24px;
+  --shadow-card: 0 12px 32px rgba(80, 40, 30, 0.08);
+  --shadow-soft: 0 4px 14px rgba(80, 40, 30, 0.06);
+
+  --font-display: "Fraunces", Georgia, "Times New Roman", serif;
+  --font-ui: "Nunito Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  --color-bg: #1a1315;
+  --color-surface: #241a1d;
+  --color-surface-sunken: #2c2024;
+  --color-ink: #f3e9e6;
+  --color-entry: #f28ea0;
+  --color-muted: #b9a6a0;
+  --color-accent: #d76d82;
+  --color-accent-strong: #e0607a;
+  --color-on-accent: #2b1116;
+
+  --color-cell: #2b1f22;
+  --color-grid-line: #3a2e2f;
+  --color-box-line: #5a4448;
+  --color-peer: #3a2429;
+  --color-same-number: #4c2c33;
+  --color-selected-ring: #e0607a;
+  --color-given-bg: #322327;
+  --color-conflict-bg: #4a2126;
+  --color-conflict-text: #ff8a9a;
+  --color-success: #86c59a;
+
+  color-scheme: dark;
+}
+
+/* Follow the OS when the user hasn't picked a theme explicitly */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --color-bg: #1a1315;
+    --color-surface: #241a1d;
+    --color-surface-sunken: #2c2024;
+    --color-ink: #f3e9e6;
+    --color-entry: #f28ea0;
+    --color-muted: #b9a6a0;
+    --color-accent: #d76d82;
+    --color-accent-strong: #e0607a;
+    --color-on-accent: #2b1116;
+
+    --color-cell: #2b1f22;
+    --color-grid-line: #3a2e2f;
+    --color-box-line: #5a4448;
+    --color-peer: #3a2429;
+    --color-same-number: #4c2c33;
+    --color-selected-ring: #e0607a;
+    --color-given-bg: #322327;
+    --color-conflict-bg: #4a2126;
+    --color-conflict-text: #ff8a9a;
+    --color-success: #86c59a;
+
+    color-scheme: dark;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  min-height: 100vh;
+  background-color: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-ui);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+  font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New", monospace;
 }

@@ -1,34 +1,46 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { generatePuzzle, getConflicts, Board } from "../utils/sudoku"; // Puzzle generator (unique solution guaranteed)
+import { Difficulty, GameStats } from "../game/stats";
+import { formatTime } from "../game/format";
 import "./SudokuBoard.css"; // Import updated styles
 
-const BEST_TIME_KEY = "sudoku-best-time";
+const DIFFICULTY_KEY = "sudoku-difficulty";
 
-// Read the stored best time (in seconds), or null if there isn't one / storage is unavailable.
-const loadBestTime = (): number | null => {
+// How many cells the generator tries to blank out per difficulty.
+const BLANKS: Record<Difficulty, number> = { easy: 38, medium: 46, hard: 52 };
+
+const loadDifficulty = (): Difficulty => {
   try {
-    const stored = localStorage.getItem(BEST_TIME_KEY);
-    return stored === null ? null : parseInt(stored, 10);
+    const stored = localStorage.getItem(DIFFICULTY_KEY);
+    if (stored === "easy" || stored === "medium" || stored === "hard") return stored;
   } catch {
-    return null;
+    /* storage unavailable */
   }
+  return "medium";
 };
 
-// Format a duration in seconds as m:ss.
-const formatTime = (totalSeconds: number): string => {
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return `${minutes}:${String(seconds).padStart(2, "0")}`;
-};
+interface SudokuBoardProps {
+  stats: GameStats;
+  onRecordWin: (difficulty: Difficulty, seconds: number) => void;
+}
 
-const SudokuBoard: React.FC = () => {
-  const [game, setGame] = useState<{ puzzle: Board; solution: Board }>(() => generatePuzzle());
+const SudokuBoard: React.FC<SudokuBoardProps> = ({ stats, onRecordWin }) => {
+  const [difficulty, setDifficulty] = useState<Difficulty>(() => loadDifficulty());
+  const [game, setGame] = useState<{ puzzle: Board; solution: Board }>(() =>
+    generatePuzzle(BLANKS[loadDifficulty()])
+  );
   const [board, setBoard] = useState<Board>(() => game.puzzle.map((row) => [...row]));
   const [hintedCell, setHintedCell] = useState<[number, number] | null>(null); // Track hinted cell
   const [remainingHints, setRemainingHints] = useState<number>(3); // Track remaining hints
   const [conflicts, setConflicts] = useState<Set<string>>(new Set()); // Cells flagged by the last "Check"
   const [seconds, setSeconds] = useState<number>(0); // Elapsed time for the current puzzle
-  const [bestTime, setBestTime] = useState<number | null>(() => loadBestTime());
+  const [focusedCell, setFocusedCell] = useState<[number, number] | null>(null); // Drives peer / same-number highlighting
+
+  // Best time for the active difficulty, straight from the persisted stats.
+  const bestTime = stats.byDifficulty[difficulty].bestTime;
+
+  // Guard so a win is recorded exactly once per puzzle (reset on each new game).
+  const winRecorded = useRef(false);
 
   // References to every cell input, so arrow keys can move focus around the grid.
   const cellRefs = useRef<Array<Array<HTMLInputElement | null>>>(
@@ -95,6 +107,24 @@ const SudokuBoard: React.FC = () => {
     [board, solution]
   );
 
+  // Completion progress: how many of the originally-blank cells are now filled.
+  const progress = useMemo(() => {
+    let blanks = 0;
+    let filled = 0;
+    for (let r = 0; r < 9; r++) {
+      for (let c = 0; c < 9; c++) {
+        if (puzzle[r][c] === 0) {
+          blanks++;
+          if (board[r][c] !== 0) filled++;
+        }
+      }
+    }
+    return blanks === 0 ? 100 : Math.round((filled / blanks) * 100);
+  }, [board, puzzle]);
+
+  // The value under the focused cell (0 if empty) — drives same-number highlighting.
+  const focusedValue = focusedCell ? board[focusedCell[0]][focusedCell[1]] : 0;
+
   // Tick the timer once a second while the puzzle is unsolved; freeze on win.
   useEffect(() => {
     if (isSolved) return;
@@ -102,29 +132,45 @@ const SudokuBoard: React.FC = () => {
     return () => clearInterval(id);
   }, [isSolved]);
 
-  // On win, record a new best time if this solve was faster (or the first).
+  // On win, record the solve exactly once (updates wins, best time, and streak).
   useEffect(() => {
-    if (!isSolved) return;
-    setBestTime((prev) => {
-      if (prev !== null && seconds >= prev) return prev;
-      try {
-        localStorage.setItem(BEST_TIME_KEY, String(seconds));
-      } catch {
-        /* storage unavailable — keep the in-memory best time only */
-      }
-      return seconds;
-    });
-  }, [isSolved, seconds]);
+    if (isSolved && !winRecorded.current) {
+      winRecorded.current = true;
+      onRecordWin(difficulty, seconds);
+    }
+  }, [isSolved, seconds, difficulty, onRecordWin]);
 
-  // Start a fresh puzzle and reset all game state.
-  const restartGame = () => {
-    const next = generatePuzzle();
+  // Start a fresh puzzle at the given difficulty and reset all game state.
+  const newGame = (level: Difficulty) => {
+    const next = generatePuzzle(BLANKS[level]);
     setGame(next);
     setBoard(next.puzzle.map((row) => [...row]));
     setHintedCell(null);
     setRemainingHints(3);
     setConflicts(new Set());
     setSeconds(0);
+    setFocusedCell(null);
+    winRecorded.current = false;
+  };
+
+  const restartGame = () => newGame(difficulty);
+
+  const changeDifficulty = (level: Difficulty) => {
+    setDifficulty(level);
+    try {
+      localStorage.setItem(DIFFICULTY_KEY, level);
+    } catch {
+      /* storage unavailable — keep the in-memory choice only */
+    }
+    newGame(level);
+  };
+
+  // Does (row, col) share the focused cell's row, column, or 3x3 box?
+  const isPeerOfFocus = (row: number, col: number): boolean => {
+    if (!focusedCell) return false;
+    const [fr, fc] = focusedCell;
+    const sameBox = Math.floor(row / 3) === Math.floor(fr / 3) && Math.floor(col / 3) === Math.floor(fc / 3);
+    return row === fr || col === fc || sameBox;
   };
 
   // onChange path (mainly on-screen/mobile keyboards). Physical keyboards are
@@ -174,73 +220,137 @@ const SudokuBoard: React.FC = () => {
   };
 
   return (
-    <div className="sudoku-container">
-      <div>
-        {isSolved && (
-          <p className="win-banner" role="status" aria-live="polite">
-            ✓ You solved it!
-          </p>
-        )}
+    <section className="board-card">
+      <div className="hud">
+        <div className="stat" role="group" aria-label="Time">
+          <span className="stat__label">Time</span>
+          <span className="stat__value">{formatTime(seconds)}</span>
+        </div>
+        <div className="stat" role="group" aria-label="Best Time">
+          <span className="stat__label">Best Time</span>
+          <span className="stat__value">{bestTime === null ? "--" : formatTime(bestTime)}</span>
+        </div>
+        <div className="stat" role="group" aria-label="Progress">
+          <span className="stat__label">Progress</span>
+          <div className="stat__progress">
+            <span
+              className="ring"
+              style={{
+                background: `conic-gradient(var(--color-accent) ${progress * 3.6}deg, var(--color-surface-sunken) 0deg)`,
+              }}
+              aria-hidden="true"
+            />
+            <span className="stat__value">{progress}%</span>
+          </div>
+        </div>
+        <label className="stat difficulty">
+          <span className="stat__label">Difficulty</span>
+          <select
+            className="difficulty__select"
+            value={difficulty}
+            onChange={(e) => changeDifficulty(e.target.value as Difficulty)}
+          >
+            <option value="easy">Easy</option>
+            <option value="medium">Medium</option>
+            <option value="hard">Hard</option>
+          </select>
+        </label>
+      </div>
 
-        <div className={`sudoku-grid ${isSolved ? "solved" : ""}`}>
-          {board.map((row, rowIndex) =>
-            row.map((cell, colIndex) => {
+      {isSolved && (
+        <p className="win-banner" role="status" aria-live="polite">
+          ✓ You solved it!
+        </p>
+      )}
+
+      <div
+        className={`sudoku-grid ${isSolved ? "solved" : ""}`}
+        role="grid"
+        aria-label="Sudoku board"
+      >
+        {board.map((row, rowIndex) => (
+          <div className="sudoku-row" role="row" key={rowIndex}>
+            {row.map((cell, colIndex) => {
               const key = `${rowIndex}-${colIndex}`;
               const given = isGiven(rowIndex, colIndex);
+              const isSelected = focusedCell?.[0] === rowIndex && focusedCell?.[1] === colIndex;
+              const isPeer = !isSelected && isPeerOfFocus(rowIndex, colIndex);
+              const isSameNumber = !isSelected && focusedValue !== 0 && cell === focusedValue;
               const isHinted = hintedCell && hintedCell[0] === rowIndex && hintedCell[1] === colIndex;
               const isConflict = conflicts.has(key);
+              // Roving tabindex: exactly one cell is tabbable (the last-focused one,
+              // defaulting to the top-left), so Tab enters the grid once and arrow
+              // keys drive navigation from there.
+              const rovingRow = focusedCell ? focusedCell[0] : 0;
+              const rovingCol = focusedCell ? focusedCell[1] : 0;
+              const className = [
+                "sudoku-cell",
+                given ? "given" : "",
+                !given && cell !== 0 ? "entry" : "",
+                isSelected ? "selected" : "",
+                isPeer ? "peer" : "",
+                isSameNumber ? "same-number" : "",
+                isHinted ? "hinted-cell" : "",
+                isConflict ? "conflict" : "",
+                colIndex % 3 === 2 && colIndex !== 8 ? "box-right" : "",
+                rowIndex % 3 === 2 && rowIndex !== 8 ? "box-bottom" : "",
+                colIndex === 8 ? "last-col" : "",
+                rowIndex === 8 ? "last-row" : "",
+              ]
+                .filter(Boolean)
+                .join(" ");
               return (
-                <input
-                  key={key}
-                  ref={(el) => {
-                    cellRefs.current[rowIndex][colIndex] = el;
-                  }}
-                  type="text"
-                  inputMode="numeric"
-                  aria-label={`Row ${rowIndex + 1}, column ${colIndex + 1}`}
-                  aria-invalid={isConflict}
-                  className={`sudoku-cell ${given ? "given" : ""} ${isHinted ? "hinted-cell" : ""} ${isConflict ? "conflict" : ""}`}
-                  value={cell === 0 ? "" : cell}
-                  onChange={(e) => handleInputChange(e, rowIndex, colIndex)}
-                  onKeyDown={(e) => handleKeyDown(e, rowIndex, colIndex)}
-                  // Givens (and everything once solved) are read-only, not disabled,
-                  // so they stay keyboard-focusable and visible to screen readers.
-                  readOnly={given || isSolved}
-                />
+                <div className="sudoku-gridcell" role="gridcell" key={key}>
+                  <input
+                    ref={(el) => {
+                      cellRefs.current[rowIndex][colIndex] = el;
+                    }}
+                    type="text"
+                    inputMode="numeric"
+                    aria-label={`Row ${rowIndex + 1}, column ${colIndex + 1}`}
+                    aria-invalid={isConflict}
+                    className={className}
+                    value={cell === 0 ? "" : cell}
+                    tabIndex={rowIndex === rovingRow && colIndex === rovingCol ? 0 : -1}
+                    onChange={(e) => handleInputChange(e, rowIndex, colIndex)}
+                    onKeyDown={(e) => handleKeyDown(e, rowIndex, colIndex)}
+                    onFocus={() => setFocusedCell([rowIndex, colIndex])}
+                    // Givens (and everything once solved) are read-only, not disabled,
+                    // so they stay keyboard-focusable and visible to screen readers.
+                    readOnly={given || isSolved}
+                  />
+                </div>
               );
-            })
-          )}
-        </div>
-
-        <div className="stats" role="status" aria-live="off">
-          <span>Time: {formatTime(seconds)}</span>
-          <span>Best: {bestTime === null ? "--" : formatTime(bestTime)}</span>
-        </div>
-
-        <div className="mb-4">
-          {/* Display remaining hints */}
-          <p>Remaining Hints: {remainingHints}</p>
-        </div>
-
-        <div className="mt-4">
-          {isSolved ? (
-            <button onClick={restartGame}>New Game</button>
-          ) : (
-            <>
-              <button
-                onClick={revealHint}
-                className={remainingHints <= 0 ? "hint-disabled" : ""}
-                disabled={remainingHints <= 0} // Disable hint button when no hints are left
-              >
-                Hint
-              </button>
-              <button onClick={checkBoard}>Check</button>
-              <button onClick={restartGame}>Restart Game</button>
-            </>
-          )}
-        </div>
+            })}
+          </div>
+        ))}
       </div>
-    </div>
+
+      <div className="actions">
+        {isSolved ? (
+          <button className="btn btn--primary" onClick={restartGame}>
+            New Game
+          </button>
+        ) : (
+          <>
+            <button
+              className="btn btn--ghost"
+              onClick={revealHint}
+              disabled={remainingHints <= 0}
+            >
+              Hint
+              <span className="btn__badge">{remainingHints}</span>
+            </button>
+            <button className="btn btn--primary" onClick={checkBoard}>
+              ✦ Check Puzzle
+            </button>
+            <button className="btn btn--ghost" onClick={restartGame}>
+              ↻ Restart
+            </button>
+          </>
+        )}
+      </div>
+    </section>
   );
 };
 
