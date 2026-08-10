@@ -19,7 +19,7 @@
 
   --color-cell: #fbfcfe;
   --color-grid-line: #dbe1ea;
-  --color-box-line: #a7b3c2;
+  --color-box-line: #808ea1;
   --color-peer: #e2e9f1; /* row/column/box of the selected cell */
   --color-same-number: #ccdaea; /* cells sharing the selected value */
   --color-selected-ring: #3f627f;
@@ -45,7 +45,7 @@
   --color-surface: #1b222b;
   --color-surface-sunken: #232c37;
   --color-ink: #e7edf4;
-  --color-entry: #86b0d6;
+  --color-entry: #96bcde;
   --color-muted: #9aa7b8;
   --color-accent: #6f9bc4;
   --color-accent-strong: #86b0d6;
@@ -53,7 +53,7 @@
 
   --color-cell: #1e2731;
   --color-grid-line: #2e3945;
-  --color-box-line: #47566a;
+  --color-box-line: #657790;
   --color-peer: #26323f;
   --color-same-number: #33475d;
   --color-selected-ring: #86b0d6;
@@ -72,7 +72,7 @@
     --color-surface: #1b222b;
     --color-surface-sunken: #232c37;
     --color-ink: #e7edf4;
-    --color-entry: #86b0d6;
+    --color-entry: #96bcde;
     --color-muted: #9aa7b8;
     --color-accent: #6f9bc4;
     --color-accent-strong: #86b0d6;
@@ -80,7 +80,7 @@
 
     --color-cell: #1e2731;
     --color-grid-line: #2e3945;
-    --color-box-line: #47566a;
+    --color-box-line: #657790;
     --color-peer: #26323f;
     --color-same-number: #33475d;
     --color-selected-ring: #86b0d6;
