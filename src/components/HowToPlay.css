@@ -1,0 +1,41 @@
+.how-to-play__intro {
+  margin: 0 0 14px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--color-muted);
+}
+
+.how-to-play__steps {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.how-to-play__step {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.how-to-play__icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: var(--color-muted);
+}
+
+.how-to-play__step-title {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-ink);
+}
+
+.how-to-play__step-detail {
+  display: block;
+  font-size: 12px;
+  color: var(--color-muted);
+}

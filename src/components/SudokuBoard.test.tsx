@@ -40,11 +40,18 @@ const statValue = (name: string, value: string) =>
   within(screen.getByRole("group", { name })).getByText(value);
 
 const renderBoard = (
-  overrides: { stats?: GameStats; onRecordWin?: (difficulty: Difficulty, seconds: number) => void } = {}
+  overrides: {
+    difficulty?: Difficulty;
+    stats?: GameStats;
+    onRecordWin?: (difficulty: Difficulty, seconds: number) => void;
+  } = {}
 ) => {
   const onRecordWin = overrides.onRecordWin ?? vi.fn();
   const stats = overrides.stats ?? defaultStats();
-  const utils = render(<SudokuBoard stats={stats} onRecordWin={onRecordWin} />);
+  const difficulty = overrides.difficulty ?? "medium";
+  const utils = render(
+    <SudokuBoard difficulty={difficulty} stats={stats} onRecordWin={onRecordWin} />
+  );
   return { ...utils, onRecordWin };
 };
 
@@ -62,7 +69,7 @@ describe("SudokuBoard", () => {
     fireEvent.change(topLeftCell(), { target: { value: "5" } }); // the correct value
 
     expect(screen.getByText(/you solved it/i)).toBeInTheDocument();
-    expect(screen.getByText("New Game")).toBeInTheDocument();
+    expect(screen.getByText("New game")).toBeInTheDocument();
     expect(topLeftCell()).toHaveAttribute("readonly"); // board locks once solved
   });
 
@@ -157,33 +164,18 @@ describe("SudokuBoard", () => {
     expect(tabbable()[0]).toBe(screen.getByLabelText("Row 5, column 5"));
   });
 
-  it("changing difficulty starts a new game and resets the timer", () => {
-    renderBoard();
-    const select = screen.getByLabelText("Difficulty");
-    expect(select).toHaveValue("medium");
-
-    act(() => vi.advanceTimersByTime(4000));
-    expect(statValue("Time", "0:04")).toBeInTheDocument();
-
-    fireEvent.change(select, { target: { value: "hard" } });
-
-    expect(select).toHaveValue("hard");
-    expect(statValue("Time", "0:00")).toBeInTheDocument(); // fresh puzzle
-    expect(localStorage.getItem("sudoku-difficulty")).toBe("hard");
-  });
-
   describe("timer and best time", () => {
     it("counts up while playing and freezes on win", () => {
       renderBoard();
-      expect(statValue("Time", "0:00")).toBeInTheDocument();
+      expect(statValue("Elapsed time", "0:00")).toBeInTheDocument();
 
       act(() => vi.advanceTimersByTime(3000));
-      expect(statValue("Time", "0:03")).toBeInTheDocument();
+      expect(statValue("Elapsed time", "0:03")).toBeInTheDocument();
 
       fireEvent.change(topLeftCell(), { target: { value: "5" } }); // solve
 
       act(() => vi.advanceTimersByTime(5000)); // timer should be frozen now
-      expect(statValue("Time", "0:03")).toBeInTheDocument();
+      expect(statValue("Elapsed time", "0:03")).toBeInTheDocument();
     });
 
     it("reports the win exactly once with the elapsed solve time", () => {
@@ -199,7 +191,7 @@ describe("SudokuBoard", () => {
     it("shows the best time for the current difficulty from stats", () => {
       const stats = applyWin(defaultStats(), "medium", 125); // 2:05
       renderBoard({ stats });
-      expect(statValue("Best Time", "2:05")).toBeInTheDocument();
+      expect(statValue("Best time", "2:05")).toBeInTheDocument();
     });
   });
 });
