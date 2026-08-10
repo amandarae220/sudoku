@@ -2,7 +2,7 @@
 
 A browser-based Sudoku puzzle game — pick a difficulty, fill in the board, check your work, and use up to three hints when you get stuck.
 
-Live: https://amandarae220.github.io/sudoku
+Live: https://www.amandarae.dev/sudoku/
 
 ---
 
