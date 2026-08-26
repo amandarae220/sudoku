@@ -164,6 +164,30 @@ describe("SudokuBoard", () => {
     expect(tabbable()[0]).toBe(screen.getByLabelText("Row 5, column 5"));
   });
 
+  it("spends a hint and reveals the empty cell", () => {
+    renderBoard();
+    expect(statValue("Hints left", "3")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Hint" }));
+
+    expect(statValue("Hints left", "2")).toBeInTheDocument();
+    expect(topLeftCell()).toHaveValue("5"); // only blank cell, filled from the solution
+  });
+
+  it("start over clears entries and resets the timer", () => {
+    renderBoard();
+    act(() => vi.advanceTimersByTime(3000));
+    expect(statValue("Elapsed time", "0:03")).toBeInTheDocument();
+
+    fireEvent.change(topLeftCell(), { target: { value: "9" } }); // wrong: keeps the puzzle unsolved
+    expect(topLeftCell()).toHaveValue("9");
+
+    fireEvent.click(screen.getByRole("button", { name: /start over/i }));
+
+    expect(topLeftCell()).toHaveValue(""); // fresh puzzle
+    expect(statValue("Elapsed time", "0:00")).toBeInTheDocument();
+  });
+
   describe("timer and best time", () => {
     it("counts up while playing and freezes on win", () => {
       renderBoard();

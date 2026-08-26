@@ -29,6 +29,18 @@ test('exposes Leaderboard and Player stats panels', () => {
   expect(screen.getByText('Player stats')).toBeInTheDocument();
 });
 
+test('theme toggle switches to dark', () => {
+  render(<App />);
+  const dark = screen.getByRole('radio', { name: /dark/i });
+  expect(dark).toHaveAttribute('aria-checked', 'false');
+
+  fireEvent.click(dark);
+
+  expect(dark).toHaveAttribute('aria-checked', 'true');
+  expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
+  expect(localStorage.getItem('sudoku-theme')).toBe('dark');
+});
+
 test('changing difficulty persists the choice', () => {
   render(<App />);
   const select = screen.getByLabelText('Difficulty');
