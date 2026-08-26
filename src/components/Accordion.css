@@ -50,9 +50,3 @@
 .accordion__body {
   padding: 0 14px 14px;
 }
-
-@media (prefers-reduced-motion: reduce) {
-  .accordion__chevron {
-    transition: none;
-  }
-}
