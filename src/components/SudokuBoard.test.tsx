@@ -122,6 +122,8 @@ describe("SudokuBoard", () => {
     fireEvent.click(checkButton());
 
     expect(topLeftCell()).toHaveAttribute("aria-invalid", "true");
+    // Screen-reader users get an announced summary, not just the visual flags.
+    expect(screen.getByRole("status")).toHaveTextContent(/conflict/i);
   });
 
   it("highlights the focused cell's row, column, and box as peers", () => {

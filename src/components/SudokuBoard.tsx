@@ -20,6 +20,7 @@ const SudokuBoard: React.FC<SudokuBoardProps> = ({ difficulty, stats, onRecordWi
   const [hintedCell, setHintedCell] = useState<[number, number] | null>(null); // Track hinted cell
   const [remainingHints, setRemainingHints] = useState<number>(3); // Track remaining hints
   const [conflicts, setConflicts] = useState<Set<string>>(new Set()); // Cells flagged by the last "Check"
+  const [checkMessage, setCheckMessage] = useState<string>(""); // Screen-reader status for the last "Check"
   const [seconds, setSeconds] = useState<number>(0); // Elapsed time for the current puzzle
   const [focusedCell, setFocusedCell] = useState<[number, number] | null>(null); // Drives peer / same-number highlighting
 
@@ -120,6 +121,7 @@ const SudokuBoard: React.FC<SudokuBoardProps> = ({ difficulty, stats, onRecordWi
     setHintedCell(null);
     setRemainingHints(3);
     setConflicts(new Set());
+    setCheckMessage("");
     setSeconds(0);
     setFocusedCell(null);
     winRecorded.current = false;
@@ -171,9 +173,15 @@ const SudokuBoard: React.FC<SudokuBoardProps> = ({ difficulty, stats, onRecordWi
   };
 
   // On-demand self-check: briefly flag any rule conflicts, then let them fade.
+  // Also announce the outcome for screen-reader users, who can't see the flags.
   const checkBoard = () => {
     const found = getConflicts(board);
     setConflicts(found);
+    setCheckMessage(
+      found.size > 0
+        ? `${found.size} conflict${found.size === 1 ? "" : "s"} highlighted.`
+        : "No conflicts found so far."
+    );
     if (found.size > 0) {
       setTimeout(() => setConflicts(new Set()), 2500);
     }
@@ -206,6 +214,11 @@ const SudokuBoard: React.FC<SudokuBoardProps> = ({ difficulty, stats, onRecordWi
           ✓ You solved it!
         </p>
       )}
+
+      {/* Always present so the self-check outcome is announced reliably. */}
+      <p className="sr-only" role="status" aria-live="polite">
+        {checkMessage}
+      </p>
 
       <div
         className={`sudoku-grid ${isSolved ? "solved" : ""}`}
