@@ -122,6 +122,8 @@ describe("SudokuBoard", () => {
     fireEvent.click(checkButton());
 
     expect(topLeftCell()).toHaveAttribute("aria-invalid", "true");
+    // Screen-reader users get an announced summary, not just the visual flags.
+    expect(screen.getByRole("status")).toHaveTextContent(/conflict/i);
   });
 
   it("highlights the focused cell's row, column, and box as peers", () => {
@@ -162,6 +164,30 @@ describe("SudokuBoard", () => {
     act(() => screen.getByLabelText("Row 5, column 5").focus());
     expect(tabbable()).toHaveLength(1);
     expect(tabbable()[0]).toBe(screen.getByLabelText("Row 5, column 5"));
+  });
+
+  it("spends a hint and reveals the empty cell", () => {
+    renderBoard();
+    expect(statValue("Hints left", "3")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Hint" }));
+
+    expect(statValue("Hints left", "2")).toBeInTheDocument();
+    expect(topLeftCell()).toHaveValue("5"); // only blank cell, filled from the solution
+  });
+
+  it("start over clears entries and resets the timer", () => {
+    renderBoard();
+    act(() => vi.advanceTimersByTime(3000));
+    expect(statValue("Elapsed time", "0:03")).toBeInTheDocument();
+
+    fireEvent.change(topLeftCell(), { target: { value: "9" } }); // wrong: keeps the puzzle unsolved
+    expect(topLeftCell()).toHaveValue("9");
+
+    fireEvent.click(screen.getByRole("button", { name: /start over/i }));
+
+    expect(topLeftCell()).toHaveValue(""); // fresh puzzle
+    expect(statValue("Elapsed time", "0:00")).toBeInTheDocument();
   });
 
   describe("timer and best time", () => {

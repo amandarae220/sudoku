@@ -31,10 +31,14 @@
   text-decoration: none;
   transition: color 0.15s ease;
 }
-.backToPortfolio:hover,
+.backToPortfolio:hover {
+  color: var(--color-accent-strong);
+}
 .backToPortfolio:focus-visible {
   color: var(--color-accent-strong);
-  outline: none;
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
 }
 
 .brand__name {

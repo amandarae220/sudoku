@@ -17,7 +17,7 @@ const OPTIONS: { value: "light" | "dark"; label: string; icon: React.ReactNode }
 // exactly one option reads as active. Picking either sets an explicit theme.
 const resolvePreference = (preference: ThemePreference): "light" | "dark" => {
   if (preference === "light" || preference === "dark") return preference;
-  return window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  return window.matchMedia?.("(prefers-color-scheme: dark)")?.matches ? "dark" : "light";
 };
 
 // A segmented control implemented as an accessible radio group.
